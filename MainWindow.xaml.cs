@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
 using AudioSwitcher.AudioApi.CoreAudio;
@@ -22,8 +24,12 @@ public partial class MainWindow : Window
         deviceOff = ConfigManager.Device_OFF;
         DetectAndHandleUnknownAudioDevice();
         UpdateButtonState();
+        Procesos p = new Procesos();
+        p.CheckAndLaunchProcesses();
     }
 
+
+    //CAMBIO EN SISTEMA AUDIO
     private void btnSwitch_Click(object sender, RoutedEventArgs e)
     {
         ToggleAudioDevice();
