@@ -6,7 +6,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Runtime.InteropServices;
 
 namespace WhatsAppLive
 {
@@ -19,6 +18,7 @@ namespace WhatsAppLive
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
         private const int SW_RESTORE = 9;
+        private const int SW_MINIMIZE = 6;
 
         public void CheckAndLaunchProcesses()
         {
@@ -29,7 +29,7 @@ namespace WhatsAppLive
             LaunchProcessIfNotRunning("Webcam", @"C:\Program Files\NDI\NDI 6 Tools\Webcam\Webcam.exe");
 
             // Comprobar y lanzar EntradaBlackMagic.vmix (vMix)
-            LaunchProcessIfNotRunning("vMix", @"C:\Users\AUTOMATIZACION\Documents\vMixStorage\EntradaBlackMagic.vmix");
+            LaunchVMixProject(@"C:\Users\AUTOMATIZACION\Documents\vMixStorage\EntradaBlackMagic.vmix");
 
             // Comprobar si WhatsApp está en ejecución
             var whatsappProcess = GetRunningProcess("WhatsApp");
@@ -70,6 +70,40 @@ namespace WhatsAppLive
             }
         }
 
+        private void LaunchVMixProject(string projectPath)
+        {
+            if (!IsProcessRunning("vMix64"))
+            {
+                try
+                {
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = @"C:\Program Files (x86)\vMix\vMix64.exe",
+                        Arguments = $"\"{projectPath}\"",
+                        WorkingDirectory = @"C:\Program Files (x86)\vMix\"
+                    };
+
+                    var process = Process.Start(startInfo);
+
+                    if (process != null)
+                    {
+                        // Esperar un poco para asegurarse de que la ventana se abra
+                        Thread.Sleep(2000);
+
+                        // Minimizar la ventana si está abierta
+                        IntPtr handle = process.MainWindowHandle;
+                        if (handle != IntPtr.Zero)
+                        {
+                            ShowWindow(handle, SW_MINIMIZE);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"No se pudo iniciar vMix con el proyecto especificado: {ex.Message}");
+                }
+            }
+        }
         private bool IsProcessRunning(string processName)
         {
             return Process.GetProcessesByName(processName).Length > 0;
