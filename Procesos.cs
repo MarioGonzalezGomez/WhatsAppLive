@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -22,21 +23,37 @@ namespace WhatsAppLive
 
         public void CheckAndLaunchProcesses()
         {
+            bool allSuccessful = true;
+            string errorMessage = "";
+
             // Comprobar y lanzar OBS
-            LaunchProcessIfNotRunning("obs64", @"C:\Program Files\obs-studio\bin\64bit\obs64.exe");
+            if (!LaunchProcessIfNotRunning("obs64", @"C:\Program Files\obs-studio\bin\64bit\obs64.exe"))
+            {
+                allSuccessful = false;
+                errorMessage += "No se pudo iniciar OBS.\n";
+            }
 
             // Comprobar y lanzar Webcam.exe
-            LaunchProcessIfNotRunning("Webcam", @"C:\Program Files\NDI\NDI 6 Tools\Webcam\Webcam.exe");
+            if (!LaunchProcessIfNotRunning("Webcam", @"C:\Program Files\NDI\NDI 6 Tools\Webcam\Webcam.exe"))
+            {
+                allSuccessful = false;
+                errorMessage += "No se pudo iniciar Webcam.\n";
+            }
 
-            // Comprobar y lanzar EntradaBlackMagic.vmix (vMix)
-            LaunchVMixProject(@"C:\Users\AUTOMATIZACION\Documents\vMixStorage\EntradaBlackMagic.vmix");
+            // Comprobar y lanzar vMix con su proyecto
+            if (!LaunchVMixProject(@"C:\Users\AUTOMATIZACION\Documents\vMixStorage\EntradaBlackMagic.vmix"))
+            {
+                allSuccessful = false;
+                errorMessage += "No se pudo iniciar vMix.\n";
+            }
 
             // Comprobar si WhatsApp está en ejecución
             var whatsappProcess = GetRunningProcess("WhatsApp");
 
             if (whatsappProcess == null)
             {
-                MessageBox.Show("WhatsApp Desktop no está en ejecución. Por favor, inícialo manualmente.");
+                allSuccessful = false;
+                errorMessage += "WhatsApp Desktop no está en ejecución. Por favor, inícialo manualmente.\n";
             }
             else
             {
@@ -44,13 +61,23 @@ namespace WhatsAppLive
 
                 if (handle != IntPtr.Zero)
                 {
-                    ShowWindow(handle, SW_RESTORE);
-                    SetForegroundWindow(handle);
+                    ShowWindow(handle, SW_MINIMIZE);
                 }
+            }
+
+            // Mostrar resultados
+            if (allSuccessful)
+            {
+                MessageBox.Show("Todos los programas se iniciaron correctamente.");
+                Environment.Exit(0); // Cerrar aplicación si todo salió bien
+            }
+            else
+            {
+                MessageBox.Show(errorMessage);
             }
         }
 
-        private void LaunchProcessIfNotRunning(string processName, string fullPath)
+        private bool LaunchProcessIfNotRunning(string processName, string fullPath)
         {
             if (!IsProcessRunning(processName))
             {
@@ -59,18 +86,20 @@ namespace WhatsAppLive
                     var startInfo = new ProcessStartInfo
                     {
                         FileName = fullPath,
-                        WorkingDirectory = System.IO.Path.GetDirectoryName(fullPath)
+                        WorkingDirectory = Path.GetDirectoryName(fullPath)
                     };
                     Process.Start(startInfo);
+                    return true;
                 }
-                catch (Exception ex)
+                catch
                 {
-                    MessageBox.Show($"No se pudo iniciar {processName}: {ex.Message}");
+                    return false;
                 }
             }
+            return true;
         }
 
-        private void LaunchVMixProject(string projectPath)
+        private bool LaunchVMixProject(string projectPath)
         {
             if (!IsProcessRunning("vMix64"))
             {
@@ -87,23 +116,24 @@ namespace WhatsAppLive
 
                     if (process != null)
                     {
-                        // Esperar un poco para asegurarse de que la ventana se abra
-                        Thread.Sleep(2000);
-
-                        // Minimizar la ventana si está abierta
+                        Thread.Sleep(2000); // Esperar para que vMix abra la ventana
                         IntPtr handle = process.MainWindowHandle;
+
                         if (handle != IntPtr.Zero)
                         {
-                            ShowWindow(handle, SW_MINIMIZE);
+                            ShowWindow(handle, SW_MINIMIZE); // Minimizar la ventana
                         }
                     }
+                    return true;
                 }
-                catch (Exception ex)
+                catch
                 {
-                    MessageBox.Show($"No se pudo iniciar vMix con el proyecto especificado: {ex.Message}");
+                    return false;
                 }
             }
+            return true;
         }
+
         private bool IsProcessRunning(string processName)
         {
             return Process.GetProcessesByName(processName).Length > 0;
@@ -111,7 +141,8 @@ namespace WhatsAppLive
 
         private Process GetRunningProcess(string processName)
         {
-            return Process.GetProcessesByName(processName).FirstOrDefault();
+            var processes = Process.GetProcessesByName(processName);
+            return processes.Length > 0 ? processes[0] : null;
         }
     }
 }
